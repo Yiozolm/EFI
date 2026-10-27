@@ -103,8 +103,34 @@ has only been tested on the Firebat U6C. Without it you get a framebuffer only (
 > OpenCore asks GOP for 2560×1600, and nullarc takes over whatever mode GOP lit, so macOS runs at 2560×1600 scaled onto
 > the panel (a little soft).
 > In the OpenCore log, check that the 2560×1600 mode was actually set. If GOP doesn't offer it, use `1920x1200@32`.
-> **Never boot nullarc at 3200×2000** unless the offsets in `src/phxbringup/PhxNativeABI.h` and `tools/phxctl/bringup*.sh`
-> have been moved above the framebuffer.
+> **Never boot the 0.3.0 release at 3200×2000.** The nullarc branch `redmibook-15bf` fixes this (see below).
+
+### Native mode: nullarc branch `redmibook-15bf`
+
+That branch makes nullarc fit this laptop instead of making the laptop look like the Firebat:
+
+- `PhxBringup`, `PhxAccel` (`PhxAMDFB` + `NMXAccel`) and `PhxProbe` match `1002:15BF` as well as `1002:1900`, so the
+  `device-id` spoof is no longer needed (it does no harm either; keep it while you still run release kexts).
+- `PhxBringup` publishes `phx-bootfb-bytes` (the GOP console's size) and refuses a PSP ring inside it.
+  `bringup5.sh` places the ring 1 MiB above the console: 17 MiB at 2560×1600 as before, 26 MiB at 3200×2000.
+- `bringup5.sh` and `mesboot` read the carve-out's MC base, physical address and size from `PhxBringup`
+  (`phx-fb-mc-base`, `phx-fb-phys`, `phx-fb-size`) instead of the Firebat's 6 GiB at `0x6A0000000`. That covers the TOC/TMR
+  addresses, the GART page table, the system aperture (sized to this machine's 512 MiB) and the fault page.
+- If the layout doesn't fit, phxboot leaves the GPU untouched and stays on the firmware framebuffer.
+
+To use it, install the 0.3.0 release first as described below (spoof on, 2560×1600). Then, on the Mac, from a checkout of
+the branch:
+
+1. `sh src/phxbringup/build.sh /path/to/MacKernelSDK` → copy `PhxBringup.kext` over the one in `EFI/OC/Kexts`.
+2. `sh src/phxaccel/build.sh /path/to/MacKernelSDK` → replace `/Library/Extensions/PhxAccel.kext` with it (owner
+   `root:wheel`), then `sudo bash /Users/Shared/gpu/kinst.sh` to rebuild the Auxiliary kernel collection.
+3. `clang -O2 -o mesboot tools/phxctl/mesboot.c -framework IOKit -framework CoreFoundation`, then
+   `sudo install -m 755 mesboot /Users/Shared/gpu/phxctl/` and
+   `sudo install -m 755 tools/phxctl/{bringup5,full,phxboot}.sh /Users/Shared/gpu/`.
+4. Reboot. `ioreg -l | grep phx-bootfb-bytes` must print a line, and `/var/log/phxboot.log` must still end with `done`.
+5. Set `UEFI → Output → Resolution` to `3200x2000@32` and reboot. `/tmp/bringup5.log` should show `PSP ring at +0x1A00000`.
+6. Optional: remove the `device-id` entry from `DeviceProperties`.
+
 
 ### Steps (after macOS Tahoe 26.6 installs and boots without nullarc)
 
@@ -115,6 +141,14 @@ has only been tested on the Firebat U6C. Without it you get a framebuffer only (
 3. `ioreg -l | grep '"device-id"'` on the GPU should read `<00190000>`. If not, the spoof path is wrong.
 4. Turn on automatic login, then `sudo ./install.sh --check`, then `sudo ./install.sh --windowserver`, and reboot twice.
 5. Check `/var/log/phxboot.log` ends with `done`, and System Information → Graphics shows Metal 3.
+
+**About `mesa-patches-phoenix`:** no rebuild is needed for this laptop. RADV's GPU description comes from Mesa's
+`phoenix` entry, which is the **`1002:15BF`** chip this laptop has; patch 0002 only *reports* it as `1900` rev BA (the
+Firebat's ID) to Vulkan. That's the same identity the OpenCore spoof gives, so the two agree. The one hardware check is in
+patch 0001: RADV compares the live `GB_ADDR_CONFIG` register with the canned phoenix value and refuses the device on a
+mismatch. A full 12-CU 7840HS should match. If `vkprobe` or a Metal app logs
+`radv-darwin: live GB_ADDR_CONFIG 0x… != canned phoenix 0x…`, send that line before trying
+`RADV_DARWIN_ALLOW_ADDRCFG=1`, because a real mismatch means the tiling setup differs.
 
 Keep a USB installer and a copy of this EFI. phxboot falls back to the firmware framebuffer by itself after failed
 boots. To turn the GPU off by hand: `sudo touch /Users/Shared/gpu/phxboot-off`. To remove nullarc: `sudo ./uninstall.sh`, then
