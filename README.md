@@ -21,7 +21,8 @@ silicon). The hardware was read from this machine under Windows; the ACPI names 
 | Webcam | Xiaomi `2B7E:C687` on `GP17.XHC1` port 1 | ❌ Disabled by `SSDT-USB-Reset` (avoids 60 s boot hang) |
 | Card reader | Realtek RTS525A | ❌ RealtekCardReader stops at Sonoma |
 | Fingerprint | FPC `10A5:9201` | ❌ Never works |
-| USB4 / TB | `NHI0`/`NHI1` | ❌ USB-C still works as USB 3 |
+| USB-C ×2 | USB 3.2 Gen 2, `GP19.XHC3`/`XHC4` (`1022:15C0`/`15C1`) | ✅ USB once mapped; ❌ no video out yet (nullarc) |
+| USB4 / TB | — | Not on this model: `NHI0`/`NHI1` exist in the DSDT only, no device on the PCI bus |
 | Battery | `EC0` + `BATT` | ✅ SMCBatteryManager (+ ECEnabler, see below) |
 
 ## What changed vs. the Firebat EFI
@@ -45,7 +46,14 @@ MediaTek MT7922 has no macOS driver, and none is coming. Buy an **Intel AX210** 
 - Get the non-vPro retail card ("AX210NGW"/"AX200NGW"). Skip the "AX201"/"AX211"/"AX411" CNVi cards — they need an Intel
   chipset and **will not work on AMD**.
 - Swap: unplug the battery connector first, move the two antenna leads (MAIN/AUX) across, one screw.
-- Bluetooth comes along on the same card (USB line to XHC0 port 5). The BT kexts are already enabled.
+- Bluetooth comes along on the same card (USB line to XHC0 port 5). The BT kexts are already enabled:
+  `IntelBluetoothFirmware` + `IntelBTPatcher` **2.5.2** from the Tahoe-maintained fork
+  [lshbluesky/IntelBluetoothFirmware](https://github.com/lshbluesky/IntelBluetoothFirmware/releases/tag/v2.5.2)
+  (it matches AX210 BT `8087:0032`), plus `BlueToolFixup` 2.7.3, which includes the macOS 26 `bluetoothd` patches.
+  Don't add `IntelBluetoothInjector.kext`: it is for Big Sur and older only.
+- **Windows** needs Intel's AX210 Wi-Fi and Bluetooth drivers. Download them *before* the swap (the laptop has no
+  Ethernet port), or use phone USB tethering.
+- After the swap, put the **AX210's** MAC address into SMBIOS `ROM` (step 3). Run `getmac /v` in Windows to get it.
 
 ### 2. Add the Wi-Fi and battery kexts
 
@@ -71,7 +79,8 @@ Secure Boot **off**; UMA frame buffer as high as the BIOS allows (often hidden o
 ### 5. First boot, then fix-ups
 
 - **USB map**: in Windows, run [USBToolBox](https://github.com/USBToolBox/tool) → build `UTBMap.kext`, drop it in, enable
-  `USBToolBox.kext` + `UTBMap.kext`. `SSDT-USB-Reset` disables all of `XHC1`'s root hub — if a physical USB port stops
+  `USBToolBox.kext` + `UTBMap.kext`. The bundled `UTBMap.kext` is the Firebat's map — replace it, don't keep both. Plug a
+  device into both USB-C ports at USB 3 and USB 2 speeds so the XHC3/XHC4 ports get mapped. `SSDT-USB-Reset` disables all of `XHC1`'s root hub — if a physical USB port stops
   working in macOS, it lives on XHC1; tell me and I'll narrow the SSDT to just the webcam port.
 - **Audio**: macOS Tahoe no longer ships `AppleHDA.kext`, so AppleALC alone gives no sound. AppleHDA has to be restored
   (OpenCore Legacy Patcher), *and* AppleALC must support the Senary SN6140. Check the

@@ -455,7 +455,7 @@
 				<key>BundlePath</key>
 				<string>IntelBluetoothFirmware.kext</string>
 				<key>Comment</key>
-				<string>Intel AX200/AX210 Bluetooth firmware</string>
+				<string>Intel AX200/AX210 Bluetooth firmware - lshbluesky 2.5.2 (Tahoe)</string>
 				<key>Enabled</key>
 				<true/>
 				<key>ExecutablePath</key>
@@ -473,7 +473,7 @@
 				<key>BundlePath</key>
 				<string>IntelBTPatcher.kext</string>
 				<key>Comment</key>
-				<string>Intel BT fix (load after IntelBluetoothFirmware)</string>
+				<string>Intel BT fix - lshbluesky 2.5.2 (load after IntelBluetoothFirmware)</string>
 				<key>Enabled</key>
 				<true/>
 				<key>ExecutablePath</key>
