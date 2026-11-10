@@ -100,7 +100,7 @@ Secure Boot **off**; UMA frame buffer as high as the BIOS allows (often hidden o
 
 ## Graphics acceleration with nullarc
 
-[../nullarc](../nullarc) gives the 780M Metal 3 and a GPU-composited desktop on **macOS Tahoe 26.6**. It's alpha
+[nullarc](https://github.com/luuumi-dev/nullarc) gives the 780M Metal 3 and a GPU-composited desktop on **macOS Tahoe 26.6**. It's alpha
 (v0.4.0-alpha, 2026-11-09), and it has only been tested on the Firebat U6C: upstream's own `docs/760M_STATUS.md` says the
 760M/740M support in its README is diagnostic-only. Without it you get a framebuffer only (slow UI, no Metal apps).
 
@@ -134,7 +134,9 @@ branch (rebased onto v0.4.0) is still needed — see the warning.
 
 ### nullarc branch `redmibook-15bf` (on top of v0.4.0)
 
-One commit on top of upstream `main`. It makes the bring-up read this machine's layout instead of assuming the
+It lives in the fork [Yiozolm/nullarc](https://github.com/Yiozolm/nullarc/tree/redmibook-15bf)
+(`git clone -b redmibook-15bf https://github.com/Yiozolm/nullarc.git`): one commit on top of upstream
+[luuumi-dev/nullarc](https://github.com/luuumi-dev/nullarc) `main`. It makes the bring-up read this machine's layout instead of assuming the
 Firebat's:
 
 - `PhxBringup` (build 35) publishes `phx-bootfb-bytes` (the GOP console's size) and refuses a PSP ring inside it.
