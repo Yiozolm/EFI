@@ -365,7 +365,7 @@
 				<key>BundlePath</key>
 				<string>PhxBringup.kext</string>
 				<key>Comment</key>
-				<string>nullarc GPU bring-up - ENABLE after copying PhxBringup.kext from the nullarc release (Tahoe only)</string>
+				<string>nullarc GPU bring-up - ENABLE after copying PhxBringup.kext built from the nullarc redmibook-15bf branch, build 35 (Tahoe only)</string>
 				<key>Enabled</key>
 				<false/>
 				<key>ExecutablePath</key>
