@@ -66,9 +66,17 @@
 				<key>Comment</key>
 				<string>SSDT-XOSI.aml</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>Path</key>
 				<string>SSDT-XOSI.aml</string>
+			</dict>
+			<dict>
+				<key>Comment</key>
+				<string>ELAN2310 touchpad: I2C-only _CRS under macOS (polling) - needs TPD0 _CRS to XCRS + SSDT-XOSI</string>
+				<key>Enabled</key>
+				<true/>
+				<key>Path</key>
+				<string>SSDT-TPD0.aml</string>
 			</dict>
 			<dict>
 				<key>Comment</key>
@@ -93,7 +101,7 @@
 				<key>Count</key>
 				<integer>0</integer>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>Find</key>
 				<data>
 				X09TSQ==
@@ -109,6 +117,47 @@
 				<key>Replace</key>
 				<data>
 				WE9TSQ==
+				</data>
+				<key>ReplaceMask</key>
+				<data>
+				</data>
+				<key>Skip</key>
+				<integer>0</integer>
+				<key>TableLength</key>
+				<integer>0</integer>
+				<key>TableSignature</key>
+				<data>
+				RFNEVA==
+				</data>
+			</dict>
+			<dict>
+				<key>Base</key>
+				<string></string>
+				<key>BaseSkip</key>
+				<integer>0</integer>
+				<key>Comment</key>
+				<string>TPD0 _CRS to XCRS (matched from ELAN2310 _HID, unique in DSDT) - requires SSDT-TPD0.aml</string>
+				<key>Count</key>
+				<integer>1</integer>
+				<key>Enabled</key>
+				<true/>
+				<key>Find</key>
+				<data>
+				RUxBTjIzMTAACF9DSUQNUE5QMEM1MAAIX1VJRAoFFEcF
+				X0NSUw==
+				</data>
+				<key>Limit</key>
+				<integer>0</integer>
+				<key>Mask</key>
+				<data>
+				</data>
+				<key>OemTableId</key>
+				<data>
+				</data>
+				<key>Replace</key>
+				<data>
+				RUxBTjIzMTAACF9DSUQNUE5QMEM1MAAIX1VJRAoFFEcF
+				WENSUw==
 				</data>
 				<key>ReplaceMask</key>
 				<data>
@@ -289,13 +338,6 @@
 			<dict>
 				<key>layout-id</key>
 				<integer>7</integer>
-			</dict>
-			<key>PciRoot(0x0)/Pci(0x8,0x1)/Pci(0x0,0x0)</key>
-			<dict>
-				<key>device-id</key>
-				<data>
-				ABkAAA==
-				</data>
 			</dict>
 		</dict>
 		<key>Delete</key>
@@ -509,9 +551,9 @@
 				<key>BundlePath</key>
 				<string>itlwm.kext</string>
 				<key>Comment</key>
-				<string>ENABLE after copying itlwm.kext in (use with HeliPort app) - recommended on Tahoe</string>
+				<string>itlwm 2.3.0 for Intel AX210 (8086:2725) - use with HeliPort app</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/itlwm</string>
 				<key>MaxKernel</key>
@@ -653,7 +695,7 @@
 				<key>BundlePath</key>
 				<string>ECEnabler.kext</string>
 				<key>Comment</key>
-				<string>ENABLE after copying ECEnabler.kext in - 16-bit EC field reads for battery</string>
+				<string>ECEnabler 1.0.6 - 16-bit EC field reads for battery</string>
 				<key>Enabled</key>
 				<false/>
 				<key>ExecutablePath</key>
@@ -689,9 +731,9 @@
 				<key>BundlePath</key>
 				<string>USBToolBox.kext</string>
 				<key>Comment</key>
-				<string></string>
+				<string>USBToolBox 1.2.0</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/USBToolBox</string>
 				<key>MaxKernel</key>
@@ -707,9 +749,9 @@
 				<key>BundlePath</key>
 				<string>UTBMap.kext</string>
 				<key>Comment</key>
-				<string>Custom USB Port Map for Firebat U6C</string>
+				<string>USB map for RedmiBook Pro 15 2023 (USBToolBox 0.2, 2026-11-18)</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>ExecutablePath</key>
 				<string></string>
 				<key>MaxKernel</key>
@@ -743,9 +785,9 @@
 				<key>BundlePath</key>
 				<string>VoodooI2C.kext/Contents/PlugIns/VoodooGPIO.kext</string>
 				<key>Comment</key>
-				<string></string>
+				<string>OFF: VoodooGPIOAMD hangs at boot on this Phoenix GPIO (2026-11-19); touchpad uses polling</string>
 				<key>Enabled</key>
-				<true/>
+				<false/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/VoodooGPIO</string>
 				<key>MaxKernel</key>

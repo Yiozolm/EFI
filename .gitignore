@@ -8,3 +8,8 @@
 *~
 *.swp
 *.bak
+
+# Downloaded installers (not part of the EFI)
+Tools/*.dmg
+Tools/*.exe
+Tools/UTBMap.kext/

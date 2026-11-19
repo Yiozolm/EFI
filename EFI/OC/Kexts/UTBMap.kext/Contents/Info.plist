@@ -31,12 +31,7 @@
 			<key>IOMatchCategory</key>
 			<string>USBToolBox</string>
 			<key>IONameMatch</key>
-			<array>
-				<string>XHC0</string>
-				<string>pci1022,15b9</string>
-			</array>
-			<key>IOPCIPrimaryMatch</key>
-			<string>0x15b91022</string>
+			<string>XHC0</string>
 			<key>IOProviderClass</key>
 			<string>IOPCIDevice</string>
 			<key>IOProviderMergeProperties</key>
@@ -50,7 +45,7 @@
 					<key>HS01</key>
 					<dict>
 						<key>UsbConnector</key>
-						<integer>3</integer>
+						<integer>9</integer>
 						<key>port</key>
 						<data>
 						AQAAAA==
@@ -65,37 +60,10 @@
 						AgAAAA==
 						</data>
 					</dict>
-					<key>HS03</key>
-					<dict>
-						<key>UsbConnector</key>
-						<integer>0</integer>
-						<key>port</key>
-						<data>
-						AwAAAA==
-						</data>
-					</dict>
-					<key>HS04</key>
-					<dict>
-						<key>UsbConnector</key>
-						<integer>0</integer>
-						<key>port</key>
-						<data>
-						BAAAAA==
-						</data>
-					</dict>
-					<key>HS05</key>
-					<dict>
-						<key>UsbConnector</key>
-						<integer>255</integer>
-						<key>port</key>
-						<data>
-						BQAAAA==
-						</data>
-					</dict>
 					<key>SS01</key>
 					<dict>
 						<key>UsbConnector</key>
-						<integer>3</integer>
+						<integer>9</integer>
 						<key>port</key>
 						<data>
 						BgAAAA==
@@ -113,6 +81,28 @@
 				</dict>
 			</dict>
 		</dict>
+		<key>XHC1</key>
+		<dict>
+			<key>CFBundleIdentifier</key>
+			<string>com.dhinakg.USBToolBox.kext</string>
+			<key>IOClass</key>
+			<string>USBToolBox</string>
+			<key>IOMatchCategory</key>
+			<string>USBToolBox</string>
+			<key>IONameMatch</key>
+			<string>XHC1</string>
+			<key>IOProviderClass</key>
+			<string>IOPCIDevice</string>
+			<key>IOProviderMergeProperties</key>
+			<dict>
+				<key>port-count</key>
+				<data>
+				AAAAAA==
+				</data>
+				<key>ports</key>
+				<dict/>
+			</dict>
+		</dict>
 		<key>XHC3</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
@@ -122,12 +112,7 @@
 			<key>IOMatchCategory</key>
 			<string>USBToolBox</string>
 			<key>IONameMatch</key>
-			<array>
-				<string>XHC3</string>
-				<string>pci1022,15c0</string>
-			</array>
-			<key>IOPCIPrimaryMatch</key>
-			<string>0x15c01022</string>
+			<string>XHC3</string>
 			<key>IOProviderClass</key>
 			<string>IOPCIDevice</string>
 			<key>IOProviderMergeProperties</key>
@@ -168,41 +153,17 @@
 			<key>IOMatchCategory</key>
 			<string>USBToolBox</string>
 			<key>IONameMatch</key>
-			<array>
-				<string>XHC4</string>
-				<string>pci1022,15c1</string>
-			</array>
-			<key>IOPCIPrimaryMatch</key>
-			<string>0x15c11022</string>
+			<string>XHC4</string>
 			<key>IOProviderClass</key>
 			<string>IOPCIDevice</string>
 			<key>IOProviderMergeProperties</key>
 			<dict>
 				<key>port-count</key>
 				<data>
-				AgAAAA==
+				AAAAAA==
 				</data>
 				<key>ports</key>
-				<dict>
-					<key>HS01</key>
-					<dict>
-						<key>UsbConnector</key>
-						<integer>9</integer>
-						<key>port</key>
-						<data>
-						AQAAAA==
-						</data>
-					</dict>
-					<key>SS01</key>
-					<dict>
-						<key>UsbConnector</key>
-						<integer>9</integer>
-						<key>port</key>
-						<data>
-						AgAAAA==
-						</data>
-					</dict>
-				</dict>
+				<dict/>
 			</dict>
 		</dict>
 	</dict>

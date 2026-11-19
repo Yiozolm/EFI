@@ -3,7 +3,19 @@
 Adapted from [firebat-u6c-hackintosh-efi](../firebat-u6c-hackintosh-efi) (Ryzen 7 H 255 / Radeon 780M — the same Phoenix
 silicon). The hardware was read from this machine under Windows; the ACPI names used below come from its own DSDT.
 
-**Status: not boot-tested yet.** Treat it as a starting point.
+**Status (2026-11-19): boots the macOS Tahoe 26.6 recovery (Darwin 25.6.0) with GUI, touchpad and Wi-Fi (itlwm);
+macOS not installed yet.** `EFI/` is the config that got there. Compared with the plan below it still has three
+install-time cuts, to be undone one at a time after the install:
+
+- **USB map is external ports only** (USB-A + both USB-C). Bluetooth (XHC0 port 5), the fingerprint reader (port 3) and
+  XHC1/XHC4 are left out: with all internal ports visible, recovery stalled on
+  `busy timeout[1], (240s): 'IOUSBHostDevice'`. The full map is kept in `Tools/usbmap/UTBMap-full-Info.plist`.
+  Add port 5 back first (Bluetooth) and see whether the stall returns.
+- **ECEnabler off** — turned off while bisecting the first stall, never shown to be guilty.
+- **iGPU `device-id` spoof removed** — same reason. nullarc 0.4.0 matches `1002:15BF` itself.
+
+`itlwm.kext` in this repo has a `YOUR_WIFI_NAME` / `YOUR_WIFI_PASSWORD` placeholder in `WiFiConfig`. Put your network
+in the copy on the USB/ESP only — never commit it.
 
 ## Detected hardware
 
@@ -12,25 +24,28 @@ silicon). The hardware was read from this machine under Windows; the ACPI names 
 | CPU | Ryzen 7 7840HS, 8C/16T (Family 19h Model 74h) | ✅ AMD Vanilla patches, core count = 8 |
 | iGPU | Radeon 780M `1002:15BF` rev C7, 512 MB UMA | ⚠️ Metal via nullarc v0.4.0-alpha (Tahoe 26.6) plus the `redmibook-15bf` bring-up — see below |
 | Display | 15.6" 3200×2000 120 Hz | ⚠️ First boot at 2560×1600; brightness through nullarc's `PhxAMDFB` (PWM, not yet tried on this panel) |
-| Wi-Fi | MediaTek MT7922 `0B48:7922` at `GPP6.WLAN` | ❌ **No macOS driver — swap the card** |
-| Bluetooth | MediaTek `35F5:7922` (USB, XHC0 port 5) | ❌ Goes away with the card swap |
+| Wi-Fi | Intel AX210 `8086:2725` at `GPP6.WLAN` (swapped from MediaTek MT7922 on 2026-11-18) | ✅ itlwm 2.3.0 + HeliPort (not boot-tested); put the card's MAC address in `ROM` (step 3) |
+| Bluetooth | Intel AX210 `8087:0032` (USB, XHC0 port 5) | ⚠️ IntelBluetoothFirmware + IntelBTPatcher 2.5.2 enabled, but port 5 is **not in the current USB map** (see Status) |
 | NVMe | KIOXIA BG5 KBG50ZNV512G `1E0F:000C` | ✅ NVMeFix enabled |
 | Audio | Senary SN6140 `14F1:1F86` | ❓ Depends on AppleALC support (see below) |
-| Touchpad | ELAN2310 I2C (`I2CA.TPD0`, AMDI0010) | ✅ VoodooI2C + VoodooI2CHID |
+| Touchpad | ELAN2310 I2C (`I2CA.TPD0`, AMDI0010, GpioInt pin 8 on `\_SB.GPIO`) | ⚠️ VoodooI2C + VoodooI2CHID in **polling mode**: `SSDT-XOSI` + `_OSI→XOSI` (enables GPIO/I2CA/TPD0), `SSDT-TPD0` + `TPD0 _CRS→XCRS` (I2C-only `_CRS` under macOS), VoodooGPIO **off** — VoodooGPIOAMD 1.1 hangs at boot here, and without it a `GpioInt` in `_CRS` panics VoodooI2C in `getGPIOController` |
 | Keyboard | PS/2 `FUJ7401` (`KBC0`) | ✅ VoodooPS2Keyboard |
 | Webcam | Xiaomi `2B7E:C687` on `GP17.XHC1` port 1 | ❌ Disabled by `SSDT-USB-Reset` (avoids 60 s boot hang) |
 | Card reader | Realtek RTS525A | ❌ RealtekCardReader stops at Sonoma |
 | Fingerprint | FPC `10A5:9201` | ❌ Never works |
 | USB-C ×2 | USB 3.2 Gen 2, `GP19.XHC3`/`XHC4` (`1022:15C0`/`15C1`) | ✅ USB once mapped; ❌ no video out yet (nullarc) |
 | USB4 / TB | — | Not on this model: `NHI0`/`NHI1` exist in the DSDT only, no device on the PCI bus |
-| Battery | `EC0` + `BATT` | ✅ SMCBatteryManager (+ ECEnabler, see below) |
+| Battery | `EC0` + `BATT` | ✅ SMCBatteryManager (ECEnabler currently off, see Status) |
 
 ## What changed vs. the Firebat EFI
 
 - `SSDT-EC.aml`: re-targeted from `\_SB.PCI0.SBRG` to `\_SB.PCI0.LPC0` (this DSDT has no `SBRG`). AML checksum fixed.
 - `SSDT-CPUR`, `SSDT-USB-Reset`, `SSDT-ALS0`, `SSDT-USBX`, `SSDT-RMNE`: kept as-is — the paths (`PLTF.C000..C00F`, `GP17.XHC1`) match.
 - Audio `DeviceProperties` path `PciRoot(0x0)/Pci(0x8,0x1)/Pci(0x0,0x6)` matches this laptop's HDA controller.
-- Kexts on: SMCBatteryManager, BrightnessKeys, NVMeFix, BlueToolFixup, IntelBluetoothFirmware, IntelBTPatcher.
+- `SSDT-XOSI.aml` rewritten and enabled with the `_OSI to XOSI` rename: this DSDT hides `\_SB.GPIO` and `\_SB.I2CA`
+  unless `_OSI("Windows 2015")` is true (`TSOS >= 0x70`), and the touchpad `TPD0` unless `TPOS >= 0x60`. The new XOSI
+  answers the Windows 2001–2015 strings only under macOS and passes `_OSI` through for Windows booted via OpenCore.
+- Kexts on: SMCBatteryManager, ECEnabler, BrightnessKeys, NVMeFix, BlueToolFixup, IntelBluetoothFirmware, IntelBTPatcher, itlwm.
 - Kexts removed: RtWlanU, RtWlanU1827, RealtekBluetoothFirmware (Firebat's USB dongle), RDNA3Driver, DebugEnhancer.
 - `revcpuname` set to the 7840HS.
 - nullarc prep: GPU `device-id` spoof to `1900`, PhxBringup entry (disabled), `phxdebug=1`, GOP resolution 2560×1600.
@@ -55,22 +70,25 @@ MediaTek MT7922 has no macOS driver, and none is coming. Buy an **Intel AX210** 
   Ethernet port), or use phone USB tethering.
 - After the swap, put the **AX210's** MAC address into SMBIOS `ROM` (step 3). Run `getmac /v` in Windows to get it.
 
-### 2. Add the Wi-Fi and battery kexts
+### 2. Wi-Fi and battery kexts — done (2026-11-18)
 
-These are already in `config.plist` as **disabled** entries. Copy the kext into `EFI/OC/Kexts/`, then set `Enabled` to `true`:
+Both are in `EFI/OC/Kexts/` and enabled in `config.plist`:
 
-- **itlwm.kext** ([OpenIntelWireless/itlwm](https://github.com/OpenIntelWireless/itlwm/releases)) + the
-  [HeliPort](https://github.com/OpenIntelWireless/HeliPort/releases) app to join networks. Best choice on Tahoe.
-  Alternatively replace the bundled `AirportItlwm.kext` (a Sonoma 2.3.0 build) with one built for your macOS version and
-  enable that instead — **never both**.
-- **ECEnabler.kext** ([1Revenger1/ECEnabler](https://github.com/1Revenger1/ECEnabler/releases)) — lets SMCBatteryManager
-  read the EC's 16-bit battery fields without DSDT patches.
+- **itlwm.kext 2.3.0** ([OpenIntelWireless/itlwm](https://github.com/OpenIntelWireless/itlwm/releases/tag/v2.3.0),
+  `itlwm_v2.3.0_stable.kext.zip`). It shows up as an Ethernet interface; join networks with the
+  **HeliPort 1.5.0** app, saved as `Tools/HeliPort-1.5.0.dmg` (git-ignored). Copy it to the Mac, install it into
+  Applications, add it to Login Items. If 1.5.0 misbehaves on Tahoe, try the
+  [2.0.0-alpha](https://github.com/OpenIntelWireless/HeliPort/releases/tag/v2.0.0-alpha).
+  The bundled `AirportItlwm.kext` (Sonoma 2.3.0 build) stays **disabled** — never enable both.
+- **ECEnabler.kext 1.0.6** ([averycblack/ECEnabler](https://github.com/averycblack/ECEnabler/releases/tag/1.0.6), formerly
+  1Revenger1/ECEnabler) — lets SMCBatteryManager read the EC's 16-bit battery fields without DSDT patches.
 
-### 3. Generate your own SMBIOS
+### 3. Generate your own SMBIOS — done (2026-11-18)
 
-Run [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) → model `MacBookPro16,1` → put the Serial, Board Serial (MLB),
-SmUUID into `PlatformInfo > Generic`, and your real Ethernet/Wi-Fi MAC (no colons) into `ROM`. Check the serial shows
-"invalid" at checkcoverage.apple.com.
+Serial, MLB and SystemUUID were generated for `MacBookPro16,1` with `macserial` from OpenCore 1.0.8 and are in
+`PlatformInfo > Generic`; `ROM` holds the AX210's MAC. **Still to check by hand:** the serial must show "invalid" at
+checkcoverage.apple.com — if it is valid (someone else's Mac), generate a new one. These values belong to this machine:
+don't publish this `config.plist` or copy it to another computer.
 
 ### 4. BIOS settings
 
@@ -78,10 +96,21 @@ Secure Boot **off**; UMA frame buffer as high as the BIOS allows (often hidden o
 
 ### 5. First boot, then fix-ups
 
-- **USB map**: in Windows, run [USBToolBox](https://github.com/USBToolBox/tool) → build `UTBMap.kext`, drop it in, enable
-  `USBToolBox.kext` + `UTBMap.kext`. The bundled `UTBMap.kext` is the Firebat's map — replace it, don't keep both. Plug a
-  device into both USB-C ports at USB 3 and USB 2 speeds so the XHC3/XHC4 ports get mapped. `SSDT-USB-Reset` disables all of `XHC1`'s root hub — if a physical USB port stops
-  working in macOS, it lives on XHC1; tell me and I'll narrow the SSDT to just the webcam port.
+- **USB map — done in Windows (2026-11-18)** with USBToolBox 0.2; `USBToolBox.kext` 1.2.0 + this laptop's `UTBMap.kext`
+  are enabled (the Firebat map is gone). Raw discovery data: `Tools/usb.json`. The map:
+
+  | Controller | Port | Connector | What |
+  |---|---|---|---|
+  | `GP17.XHC0` | HS01 (1) + SS01 (6) | Type-C | USB-C port |
+  | `GP17.XHC0` | HS02 (2) + SS02 (7) | USB 3 Type-A | USB-A port — added by hand after the first scan; the second scan saw the SanDisk on SS port 7, and ACPI marks it Type-A |
+  | `GP17.XHC0` | HS03 (3) | internal | FPC fingerprint (no macOS driver) |
+  | `GP17.XHC0` | HS04 (5) | internal | AX210 Bluetooth |
+  | `GP17.XHC1` | HS01 (1) | internal | Webcam — the whole controller is disabled by `SSDT-USB-Reset`, no physical port lives here |
+  | `GP19.XHC3` | HS01 (1) + SS01 (2) | Type-C | USB-C port |
+
+  The fingerprint reader is port 3, not 2/7. Flipping a USB-C plug does not change the port number on either C port
+  (checked in the second scan). `GP19.XHC4` (2 ports, no connector type in ACPI) saw no device and is not mapped. If a port doesn't work in macOS —
+  most likely the USB-A or one orientation of a USB-C plug — re-run `Tools/USBToolBox.exe`, plug into that port, rebuild.
 - **Audio**: macOS Tahoe no longer ships `AppleHDA.kext`, so AppleALC alone gives no sound. nullarc 0.4.0 has a route
   that works on the Firebat: `AppleHDA.kext` in `/Library/Extensions` (Auxiliary kernel collection), an AppleALC whose
   AppleHDA paths point there (`tools/phxctl/alc_le_paths.py`), and `PhxHDA.kext` (`src/phxhda`, a Lilu plugin injected
@@ -112,7 +141,7 @@ branch (rebased onto v0.4.0) is still needed — see the warning.
 
 | Setting | Why |
 |---|---|
-| `DeviceProperties` → `PciRoot(0x0)/Pci(0x8,0x1)/Pci(0x0,0x0)` → `device-id` = `00190000` | Left over from 0.3.0, whose kexts only matched `1002:1900` (Hawk Point, the Firebat). The 0.4.0 kexts match `1002:15BF` themselves, so it is optional now. It does no harm (same gfx1103 silicon and firmware); remove it once acceleration works. |
+| ~~`DeviceProperties` → `PciRoot(0x0)/Pci(0x8,0x1)/Pci(0x0,0x0)` → `device-id` = `00190000`~~ **removed 2026-11-19** | Left over from 0.3.0, whose kexts only matched `1002:1900` (Hawk Point, the Firebat). The 0.4.0 kexts match `1002:15BF` themselves, so it is optional now. It does no harm (same gfx1103 silicon and firmware); remove it once acceleration works. |
 | `Kernel → Add` → `PhxBringup.kext`, `MinKernel 25.0.0`, after VirtualSMC, **disabled** | Turn it on once the kext is in `EFI/OC/Kexts`. |
 | boot-args: `amfi=0x80 amfi_get_out_of_my_way=0x1 -amfipassbeta phxdebug=1`, `csr-active-config 7F080000`, `SecureBootModel Disabled` | nullarc's requirements (`AMFIPass.kext` is already enabled). |
 | `UEFI → Output → Resolution` = `2560x1600@32` | See the warning below. |
