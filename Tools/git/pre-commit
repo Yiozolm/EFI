@@ -1,0 +1,28 @@
+#!/bin/bash
+# Refuse a commit if any staged file contains this machine's SMBIOS values or the card's MAC.
+# Installed by Tools/git/setup.sh; values come from .git/info/smbios.plist.
+set -euo pipefail
+GD="$(git rev-parse --git-dir)"
+P="$GD/info/smbios.plist"
+[[ -f "$P" ]] || exit 0
+VALS=()
+while IFS= read -r line; do VALS+=("$line"); done < <(python3 -I - "$P" <<'EOF'
+import plistlib, sys
+v = plistlib.load(open(sys.argv[1], "rb"))
+for k in ("SystemSerialNumber", "MLB", "SystemUUID"):
+    if v.get(k): print(v[k])
+r = v.get("ROM")
+if r:
+    print(":".join(f"{b:02X}" for b in r)); print(":".join(f"{b:02x}" for b in r)); print(r.hex().upper())
+    import base64; print(base64.b64encode(r).decode())
+EOF
+)
+bad=0
+while IFS= read -r f; do
+  for v in "${VALS[@]}"; do
+    if git show ":$f" 2>/dev/null | grep -a -q -F -e "$v"; then
+      echo "pre-commit: $f contains private SMBIOS/MAC data - not committing" >&2; bad=1; break
+    fi
+  done
+done < <(git diff --cached --name-only --diff-filter=ACMR)
+exit $bad

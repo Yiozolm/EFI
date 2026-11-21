@@ -13,3 +13,6 @@
 Tools/*.dmg
 Tools/*.exe
 Tools/UTBMap.kext/
+
+# Python
+__pycache__/

@@ -119,12 +119,21 @@ Both are in `EFI/OC/Kexts/` and enabled in `config.plist`:
 - **ECEnabler.kext 1.0.6** ([averycblack/ECEnabler](https://github.com/averycblack/ECEnabler/releases/tag/1.0.6), formerly
   1Revenger1/ECEnabler) — lets SMCBatteryManager read the EC's 16-bit battery fields without DSDT patches.
 
-### 3. Generate your own SMBIOS — done (2026-11-18)
+### 3. Generate your own SMBIOS
 
-Serial, MLB and SystemUUID were generated for `MacBookPro16,1` with `macserial` from OpenCore 1.0.8 and are in
-`PlatformInfo > Generic`; `ROM` holds the AX210's MAC. **Still to check by hand:** the serial must show "invalid" at
-checkcoverage.apple.com — if it is valid (someone else's Mac), generate a new one. These values belong to this machine:
-don't publish this `config.plist` or copy it to another computer.
+The `config.plist` in this repository ships with **empty** `SystemSerialNumber`, `MLB`, `SystemUUID` and `ROM`
+(`PlatformInfo > Generic`, model `MacBookPro16,1`). Fill them in before booting:
+
+- Serial, MLB and SystemUUID: run `macserial` from OpenCorePkg (`macserial -m MacBookPro16,1 -n 1`, plus `uuidgen`),
+  or use GenSMBIOS. The serial must show "invalid" at checkcoverage.apple.com; if it is valid (a real Mac's), make a new one.
+- `ROM`: the 6-byte MAC address of your Wi-Fi card (`getmac /v` in Windows), as data.
+
+These values identify your machine: never share your filled-in `config.plist`.
+
+**Keeping a fork of this repo with your real SMBIOS:** run `bash Tools/git/setup.sh` once in your clone. It saves your
+values to `.git/info/smbios.plist` (never committed) and installs a git filter: commits always get blank SMBIOS, and
+checkouts get your values back. A pre-commit check refuses any staged file that still contains them.
+`Tools/git/sanitize-tree.py` strips the same data from a checkout.
 
 ### 4. BIOS settings
 
