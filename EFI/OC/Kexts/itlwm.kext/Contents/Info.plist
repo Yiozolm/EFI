@@ -57,15 +57,7 @@
 			<key>IOUserClientClass</key>
 			<string>ItlNetworkUserClient</string>
 			<key>WiFiConfig</key>
-			<dict>
-				<key>WiFi_1</key>
-				<dict>
-					<key>password</key>
-					<string>YOUR_WIFI_PASSWORD</string>
-					<key>ssid</key>
-					<string>YOUR_WIFI_NAME</string>
-				</dict>
-			</dict>
+			<dict/>
 		</dict>
 	</dict>
 	<key>LSMinimumSystemVersion</key>

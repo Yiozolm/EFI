@@ -14,8 +14,38 @@ install-time cuts, to be undone one at a time after the install:
 - **ECEnabler off** — turned off while bisecting the first stall, never shown to be guilty.
 - **iGPU `device-id` spoof removed** — same reason. nullarc 0.4.0 matches `1002:15BF` itself.
 
-`itlwm.kext` in this repo has a `YOUR_WIFI_NAME` / `YOUR_WIFI_PASSWORD` placeholder in `WiFiConfig`. Put your network
-in the copy on the USB/ESP only — never commit it.
+**Native Wi-Fi + Bluetooth (2026-11-21; Wi-Fi verified after reboot, Bluetooth kexts updated afterwards):** this folder now has the ESP's state (PhxBringup on,
+`LauncherOption Full`, 3200×2000) plus:
+
+- **Bluetooth:** `UTBMap.kext` gets XHC0 port 5 (`HS04`, internal) back. Before this, the AX210's BT device never
+  appeared on USB, so `IntelBluetoothFirmware` never loaded and macOS showed a fake `BCM_4350C2` controller,
+  turned off. If the `IOUSBHostDevice` boot stall comes back, take `HS04` out again.
+- **Wi-Fi:** [kgp-macPro/AirportItlwm-Tahoe](https://github.com/kgp-macPro/AirportItlwm-Tahoe) **2.0.0** (AX210
+  validated, AppleVTD/`DisableIoMapper=false` OK) replaces itlwm, which stays in `Kernel/Add` disabled. It runs on
+  the Ventura legacy stack: `IOSkywalkFamily.kext` (Ventura, OCLP payload v1.2.0) + `IO80211FamilyLegacy.kext`
+  (payload v1.0.0, Brcm plugin removed) in `Kernel/Add` ahead of it, and `Kernel/Block com.apple.iokit.IOSkywalkFamily`
+  (Exclude), like OCLP's own EFI builder does. The user-space half has to come from
+  [OCLP-CustoMac](https://github.com/kgp-macPro/OCLP-CustoMac/releases) 3.0.3: Root Patch → **Modern Wi-Fi only**
+  (Modern Audio stays off, since nullarc's AppleHDA route is separate). It changes the system snapshot, and it has
+  to be redone after every macOS update.
+- All of this is done by `Tools/apply-airportitlwm-tahoe.py`. `--revert` turns itlwm back on and the Wi-Fi
+  families/Block off; the root patch is reverted from OCLP-CustoMac.
+
+**USB is slow everywhere (found 2026-11-21):** in every boot in the log, every USB device's first GET_DESCRIPTOR fails
+(`0xe00002cd`, not responding) and it takes 18–24 s to enumerate, on XHC0 and XHC3 alike. After that, each transfer
+takes seconds (a USB stick needs over a minute to show up). This is the likely cause of the old `IOUSBHostDevice` 240 s
+stall, the webcam hang behind `SSDT-USB-Reset`, and the Bluetooth failure: IntelBluetoothFirmware never gets the
+answer to its first HCI command (`interruptPipeRead Timeout` / `Reading Intel version command failed`). Bluetooth works
+in Windows. The likely fix is [XHCILagFix](https://github.com/hbyonly1/XHCILagFix) 0.1.0 (Lilu plugin, right after
+Lilu; off with `-xhcilagfixoff`): AppleUSBXHCI routes transfer events to interrupters 1/2, whose notifications don't
+reach the CPU on these AMD controllers, and the kext points them back to interrupter 0. A Hawk Point user on 26.7.2
+reports it fixed USB input, storage and a 240 s Bluetooth stall. Isochronous devices (USB audio, webcam) reportedly still
+don't work with it. **Verified 2026-11-21 10:43:** `ioreg -r -c XHCILagFix` shows `Active = Yes`; the BT device enumerates in 0.2 s (was 8–10 s) and a USB stick in 0.5 s (was 18 s) and mounts; Bluetooth loads its firmware and comes up. `Tools/bt-reprobe` re-runs the BT firmware load without rebooting.
+
+**Wi-Fi with itlwm (fallback):** networks are joined with HeliPort 1.5.0 (keychain, auto-join at login). `itlwm.kext` here has
+an empty `WiFiConfig`. To get Wi-Fi before login (e.g. on an installer USB), add a `WiFi_1` dict with `ssid` and
+`password` to the copy on the USB only, never in this folder. `Tools/wifi-remove-hardcoded.sh` (run with sudo)
+removes such entries from the internal ESP again.
 
 ## Detected hardware
 
@@ -24,8 +54,8 @@ in the copy on the USB/ESP only — never commit it.
 | CPU | Ryzen 7 7840HS, 8C/16T (Family 19h Model 74h) | ✅ AMD Vanilla patches, core count = 8 |
 | iGPU | Radeon 780M `1002:15BF` rev C7, 512 MB UMA | ⚠️ Metal via nullarc v0.4.0-alpha (Tahoe 26.6) plus the `redmibook-15bf` bring-up — see below |
 | Display | 15.6" 3200×2000 120 Hz | ⚠️ First boot at 2560×1600; brightness through nullarc's `PhxAMDFB` (PWM, not yet tried on this panel) |
-| Wi-Fi | Intel AX210 `8086:2725` at `GPP6.WLAN` (swapped from MediaTek MT7922 on 2026-11-18) | ✅ itlwm 2.3.0 + HeliPort (not boot-tested); put the card's MAC address in `ROM` (step 3) |
-| Bluetooth | Intel AX210 `8087:0032` (USB, XHC0 port 5) | ⚠️ IntelBluetoothFirmware + IntelBTPatcher 2.5.2 enabled, but port 5 is **not in the current USB map** (see Status) |
+| Wi-Fi | Intel AX210 `8086:2725` at `GPP6.WLAN` (swapped from MediaTek MT7922 on 2026-11-18) | ✅ AirportItlwm-Tahoe 2.0.0 + OCLP-CustoMac 3.0.3 Modern Wi-Fi root patch on 26.7.3 (2026-11-21): native `Wi-Fi` port `en0`, IO80211FamilyLegacy stack. itlwm + HeliPort kept as disabled fallback. put the card's MAC address in `ROM` (step 3) |
+| Bluetooth | Intel AX210 `8087:0032` (USB, XHC0 port 5) | ✅ Working 2026-11-21: State On, USB transport, firmware v12490. Needs XHCILagFix (see above) + IntelBluetoothFirmware/IntelBTPatcher 2.5.3 + BlueToolFixup 2.7.6 (kgp Tahoe hotfix) |
 | NVMe | KIOXIA BG5 KBG50ZNV512G `1E0F:000C` | ✅ NVMeFix enabled |
 | Audio | Senary SN6140 `14F1:1F86` | ❓ Depends on AppleALC support (see below) |
 | Touchpad | ELAN2310 I2C (`I2CA.TPD0`, AMDI0010, GpioInt pin 8 on `\_SB.GPIO`) | ⚠️ VoodooI2C + VoodooI2CHID in **polling mode**: `SSDT-XOSI` + `_OSI→XOSI` (enables GPIO/I2CA/TPD0), `SSDT-TPD0` + `TPD0 _CRS→XCRS` (I2C-only `_CRS` under macOS), VoodooGPIO **off** — VoodooGPIOAMD 1.1 hangs at boot here, and without it a `GpioInt` in `_CRS` panics VoodooI2C in `getGPIOController` |
@@ -79,7 +109,13 @@ Both are in `EFI/OC/Kexts/` and enabled in `config.plist`:
   **HeliPort 1.5.0** app, saved as `Tools/HeliPort-1.5.0.dmg` (git-ignored). Copy it to the Mac, install it into
   Applications, add it to Login Items. If 1.5.0 misbehaves on Tahoe, try the
   [2.0.0-alpha](https://github.com/OpenIntelWireless/HeliPort/releases/tag/v2.0.0-alpha).
-  The bundled `AirportItlwm.kext` (Sonoma 2.3.0 build) stays **disabled** — never enable both.
+  The bundled `AirportItlwm.kext` (Sonoma 2.3.0 build) stays **disabled** — never enable both. It does not load on
+  Tahoe anyway: upstream OpenIntelWireless has no Tahoe build. Tahoe options, as of 2026-11-21, none tried here yet:
+  - [laobamac/itlwm](https://github.com/laobamac/itlwm) `AirportItlwm-Tahoe` v2.4.0-alpha: native Wi-Fi menu, WPA2
+    and WPA2/WPA3 transition only, no AirDrop/AWDL. Its docs don't say whether an OCLP root patch is needed, and no
+    26.7.x test is listed. Limit it to Darwin 25 (`MinKernel 25.0.0`, `MaxKernel 25.99.99`) and disable itlwm.
+  - [kgp-macPro/AirportItlwm-Tahoe](https://github.com/kgp-macPro/AirportItlwm-Tahoe) 2.0.0: needs OCLP-CustoMac
+    3.0.0+ root patches (IO80211FamilyLegacy, IOSkywalkFamily block), so it modifies the system volume.
 - **ECEnabler.kext 1.0.6** ([averycblack/ECEnabler](https://github.com/averycblack/ECEnabler/releases/tag/1.0.6), formerly
   1Revenger1/ECEnabler) — lets SMCBatteryManager read the EC's 16-bit battery fields without DSDT patches.
 
